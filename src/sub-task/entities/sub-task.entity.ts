@@ -22,7 +22,9 @@ export class Subtask {
 
   @ManyToOne(
     () => Task,
-     task => task.subtasks)   
+     task => task.subtasks,{
+      onDelete: 'CASCADE'
+  })   
   task: Task;
 
   @ManyToMany(() => User)
@@ -39,12 +41,18 @@ export class Subtask {
   })
   asignados: User[];
 
+  @Column({type: 'date', nullable: true })
+  startDate: string;
+
+  @Column({type: 'date', nullable: true })
+  endDate: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @Column({ nullable: true })
+  @Column({ type: 'timestamp without time zone', nullable: true })
   completedAt: Date;
 }

@@ -1,7 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, ParseIntPipe, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, ParseUUIDPipe, Query, Req } from '@nestjs/common';
 import { ColaboradoresService } from './colaboradores.service';
-import { CreateColaboradorDto } from './dto/create-colaborador.dto';
-import { UpdateColaboradorDto } from './dto/update-colaborador.dto';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
 import { User } from 'src/auth/entities/user.entity';
 import { Auth } from 'src/auth/decorators/auth.decorator';
@@ -11,33 +9,31 @@ export class ColaboradoresController {
   constructor(private readonly colaboradoresService: ColaboradoresService) {}
 
   @Post('enviar')
-  @Auth('usuario')
+  @Auth('admin','usuario')
   async enviar(
     @GetUser() user: User, 
-    @Body() createColaboradorDto: CreateColaboradorDto
+    @Body('destinatarioId', ParseUUIDPipe) destinatarioId: string,
   ) {
-    return this.colaboradoresService.enviarSolicitudPorEmail(user.id, createColaboradorDto.destinatarioEmail);
+    return this.colaboradoresService.enviarSolicitud(user.id, destinatarioId);
   }
 
-  @Auth('usuario')
+  @Auth('admin','usuario')
   @Patch('aceptar/:id')
   async aceptarSolicitud(
     @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: User
-  ) { // Asegúrate de que tu estrategia de autenticación lo incluya
+    @GetUser() user: User){
     return this.colaboradoresService.aceptarSolicitud(id, user);
   }
  
 
-  @Auth('usuario')
+  @Auth('admin','usuario')
   @Get('pendientes')
   async verSolicitudesPendientes(@GetUser() user: User) {
-    const userId = user.id;
-    return this.colaboradoresService.obtenerSolicitudesPendientes(userId);
+    return this.colaboradoresService.obtenerSolicitudesPendientes(user.id);
   }
 
   
-@Auth('usuario')
+@Auth('admin','usuario')
 @Patch('rechazar/:id')
   async rechazarSolicitud(
     @Param('id', ParseUUIDPipe) id: string,
@@ -48,9 +44,15 @@ export class ColaboradoresController {
 
 
   @Get('get-colaborador')
-  @Auth('usuario')
+  @Auth('admin','usuario')
   listarColaboradores(@GetUser() user: User){
     return this.colaboradoresService.getColaboradores(user)
+  }
+
+  @Get('search-user')
+  @Auth('admin', 'usuario') // o el decorador que uses para proteger rutas
+  buscarUsuarios(@Query('email') email: string, @GetUser() user: User) {
+    return this.colaboradoresService.buscarColaboradorEmail(email, user.id);
   }
 
   // @Delete(':id')

@@ -11,29 +11,20 @@ import { Colaborador } from 'src/colaboradores/entities/colaborador.entity';
 import { Roles } from 'src/roles/entities/roles.entity';
 import { JwtStrategy } from './strategy/jwt-strategy';
 import { Subtask } from 'src/sub-task/entities/sub-task.entity';
+import { SendEmail } from 'src/send-email/entities/send-email.entity';
+import { NodemailerModule } from 'src/services/nodemailer/nodemailer.module';
+import { JwtTokenService } from './jwt-token-service/jwt-token.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ User, Roles, Colaborador, Subtask]),
+    TypeOrmModule.forFeature([ User, Roles, Colaborador, Subtask, SendEmail]),
     
     PassportModule.register({defaultStrategy: 'jwt'}),
-
-    JwtModule.registerAsync({
-      imports:[ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        return {
-          secret: configService.get('JWT_SECRET'),
-          signOptions: {
-            expiresIn: '2h'
-          }
-        }
-      }
-    }),
-    GeneroModule, Roles, Colaborador
+    GeneroModule, Roles, Colaborador,
+    NodemailerModule, JwtModule
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtStrategy, PassportModule, JwtModule],
+  providers: [AuthService, JwtStrategy, JwtTokenService],
+  exports: [AuthService, JwtStrategy, PassportModule, JwtTokenService],
 })
 export class AuthModule {}

@@ -5,16 +5,27 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
 import { JwtService } from '@nestjs/jwt';
-import { JwtPayload } from './interface/jwt.payload.interface';
 import { LoginUserDto } from './dto/login.user.dto';
 import { Genero } from 'src/genero/entities/genero.entitys';
 import { Roles } from 'src/roles/entities/roles.entity';
 import { Colaborador } from 'src/colaboradores/entities/colaborador.entity';
+import { NodemailerService } from 'src/services/nodemailer/nodemailer.service';
+import { SendEmail } from 'src/send-email/entities/send-email.entity';
+import { ErrorCodes } from './entities/error.codes.enum';
+import { JwtTokenService } from './jwt-token-service/jwt-token.service';
+import { JwtPayload } from './interface/jwt.payload.interface';
+import { Response, Request } from 'express';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+
 @Injectable()
 export class AuthService {
 
   constructor(
+    @InjectRepository(SendEmail)
+    private readonly sendEmailRepository: Repository<SendEmail>,
+
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
 
@@ -26,6 +37,10 @@ export class AuthService {
     @InjectRepository(Roles)
     private readonly rolesRepository: Repository<Roles>,
 
+    private readonly nodemailerService: NodemailerService,
+
+    private readonly jwtTokenService: JwtTokenService,
+
   ){}
 
   // ════════════════════════════════════════════════
@@ -33,14 +48,13 @@ export class AuthService {
   // ════════════════════════════════════════════════
   async createUser(createUserDto: CreateUserDto) {
 
-    try {
       
       const { password, confirmPassword, email, nombre } = createUserDto;
       //desestructuracion de argumentos, separa id_genero del resto de argumentos
   
       const genero = await this.generoRepository.findOneBy({id: createUserDto.id_genero});
 
-      const verRole = await this.rolesRepository.findOneBy({ rolNombre: 'usuario' })
+      const verRole = await this.rolesRepository.findOneBy({ rolNombre: 'usuario' });
 
       if(password !== confirmPassword)
         throw new BadRequestException('Las contraseñas no coinciden!!')
@@ -61,48 +75,123 @@ export class AuthService {
       });
 
       await this.userRepository.save(nuevoUsuario);
-      
-      //Genera un token 
-      const token = this.getJwtToken({ id: nuevoUsuario.id});
-      
-      const {password: _, role, ...usuario} = nuevoUsuario;
 
-      return {...usuario, token};  //devuelve el token
-  
-    } catch (error) {
+      const verificationToken = uuidv4();
+      const verificationTokenExpires = new Date();
+      verificationTokenExpires.setHours(verificationTokenExpires.getHours() + 24); // 24 horas
 
-      this.handleDBErrors(error);
+      
+      const userVerification = this.sendEmailRepository.create({
+      token: verificationToken,
+      expiresAt: verificationTokenExpires,
+      used: false,
+      type: 'EMAIL',
+      user: nuevoUsuario,
+    });
+
+    await this.sendEmailRepository.save(userVerification);
+
+    // Enviar email de verificación
+    const verificationUrl = `${process.env.FRONTEND_URL}/verify-account?token=${verificationToken}`;
+
+    await this.nodemailerService.sendVerificationEmail(email, nombre, verificationUrl);
+
+    return { message: 'Usuario registrado. Por favor verifica tu email.' };
+
+  }
+
+  // ════════════════════════════════════════════════
+  // 🧪 FUNC: recuperacion de contraseña
+  // ════════════════════════════════════════════════
+  async requestPasswordReset(email: string) {
+    const user = await this.userRepository.findOne({ where: { email } });
+
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado con ese email.');
     }
+
+    const resetToken = uuidv4();
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1); // 1 hora de validez
+
+    const tokenEntity = this.sendEmailRepository.create({
+      token: resetToken,
+      expiresAt,
+      used: false,
+      type: 'PASSWORD_RESET',
+      user,
+    });
+
+    await this.sendEmailRepository.save(tokenEntity);
+
+    const resetUrl = `${process.env.FRONTEND_URL}/recovery-password?token=${resetToken}`;
+
+    await this.nodemailerService.sendPasswordRecoveryEmail(user.email, user.nombre, resetUrl);
+
+    return { message: 'Correo de recuperación enviado.' };
+  }
+
+  async verifyResetToken(token: string) {
+
+    const tokenRecord = await this.sendEmailRepository.findOne({
+      where: { token, type: 'PASSWORD_RESET', used: false },
+      relations: ['user'],
+    });
+
+    if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
+      throw new BadRequestException('Token inválido o expirado.');
+    }
+
+    return { valid: true };
+  }
+
+  async resetPassword(resetPassword: ResetPasswordDto) {
+
+    const {token, newPassword} = resetPassword;
+
+    const tokenRecord = await this.sendEmailRepository.findOne({
+      where: { token, type: 'PASSWORD_RESET', used: false },
+      relations: ['user'],
+    });
+
+    if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
+      throw new BadRequestException('Token inválido o expirado.');
+    }
+
+    const user = tokenRecord.user;
+    user.password = bcrypt.hashSync(newPassword, 10);
+
+    await this.userRepository.save(user);
+
+    // Invalida el token
+    tokenRecord.used = true;
+    await this.sendEmailRepository.save(tokenRecord);
+
+    return { message: 'Contraseña actualizada correctamente.' };
+
   }
 
   
   // ════════════════════════════════════════════════
   // 🧪 FUNC: Obtener a todos los usuarios
   // ════════════════════════════════════════════════
-  async findAll(userActual: User) {
+  async findAll() {
+    const datos = await this.userRepository.find({
+      select:[
+        'id',
+        'nombre',
+        'email',
+      ]
+    });
 
-    // trae el nombre del rol
-    const isAdmin = userActual.role.rolNombre
-
-    if (isAdmin === 'admin') {
-      // Si es admin, trae TODOS
-      return await this.userRepository.find({
-        relations: ['role'], // Si necesitas los roles también
-      });
-    } else {
-      // Si no es admin, trae todos MENOS los admins
-      return await this.userRepository.createQueryBuilder('user')
-        .leftJoinAndSelect('user.role', 'role')
-        .where('role.rolNombre != :admin', { admin: 'admin' })
-        .getMany();
-    }
+    return datos;
   }
 
 
   // ════════════════════════════════════════════════
   // 🧪 FUNC: Obtener usuario por ID  y token
   // ════════════════════════════════════════════════
-  async findById(id: string, user: User) {
+  async findById(id: string) {
     // Primero buscamos el usuario solicitado
     const usuario = await this.userRepository.findOne({
       where: { id },
@@ -112,49 +201,72 @@ export class AuthService {
     if (!usuario) {
       throw new NotFoundException(`El usuario con el id ${id} no se encontró`);
     }
-
-  
     return {
-      ...usuario,
-      token: this.getJwtToken({ id: user.id }), // Token del que pidió el dato
-    };
+      ...usuario 
+    }
   }
 
 
   // ════════════════════════════════════════════════
   // 🧪 FUNC: Login de usuario 
   // ════════════════════════════════════════════════
-  async login(LoginUserDto: LoginUserDto) {
+  async login(LoginUserDto: LoginUserDto, res: Response) {
 
     const { email, password } = LoginUserDto;
 
     const user = await this.userRepository.findOne({
       where: { email },
-      select: [ 'email', 'password', 'id', 'activo']
+      relations:['genero'],
+      select: [ 'id','email','nombre','genero','password', 'activo', 'role']
     });
 
     if(!user || !bcrypt.compareSync(password, user.password))
-      throw new UnauthorizedException('Credenciales incorrectas' );
+      throw new UnauthorizedException({
+        Code: ErrorCodes.INVALID_CREDENTIALS,
+        message: 'Credenciales Incorrectas'
+      });
 
     // Validar si el usuario está activo
     if (!user.activo) {
-      throw new UnauthorizedException('El usuario ya no está activo!!');
+      throw new UnauthorizedException({
+        Code: ErrorCodes.ACCOUNT_DISABLED,
+        message:'El usuario ya no está activo!!'
+      });
+    }
+
+    const verification = await this.sendEmailRepository.findOne({
+      where: {
+        user: {id: user.id},
+        type: 'EMAIL',
+        used: true
+      }
+    });
+
+    if (!verification) {
+      throw new UnauthorizedException({
+        Code: ErrorCodes.ACCOUNT_NOT_VERIFIED,
+        message:'Cuenta no verificada. Por favor registrate'
+      });
     }
 
     // Generar token (sin incluir la contraseña)
-    const payload = { id: user.id };
-    const token = this.getJwtToken(payload);
+    const tokens = this.getJwtToken({ id: user.id, });
+
+    this.jwtTokenService.setRefreshTokenCookie(res, (await tokens).refreshToken);
 
     return {
-        ...payload,
+      user:{
+        id: user.id,
+        name: user.nombre,
         email: user.email,
-        token,
+        genero: user.genero.nombre,
+        isActive: user.activo,
+        role: user.role.rolNombre
+        
+      },  // Access token (corto)
+      access_token: (await tokens).accessToken,
     };
-
   }
-
-
-
 
   update(uuid: string, updateAuthDto: UpdateAuthDto) {
     return `This action updates a #${uuid} auth`;
@@ -165,11 +277,79 @@ export class AuthService {
   }
 
 
-  private getJwtToken(payload: JwtPayload){
-    const token = this.jwtService.sign( payload );
+  // ════════════════════════════════════════════════
+  // 🧪 FUNC: Generar el Access_token y el refresh_token
+  // ════════════════════════════════════════════════ 
+  async getJwtToken(payload: JwtPayload) {
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtTokenService.signAccessToken({ sub: payload.id }),
+      this.jwtTokenService.signRefreshToken({ sub: payload.id }),
+    ]);
 
-    return token;
+    const hashedRefresh = await bcrypt.hash(refreshToken, 10);
+    await this.userRepository.update({ id: payload.id }, { refresh_token: hashedRefresh });
+
+    return { accessToken, refreshToken };
   }
+
+
+  // ════════════════════════════════════════════════
+  // 🧪 FUNC: RefreshToken
+  // ════════════════════════════════════════════════  
+  async refreshToken(req: Request, res: Response) {
+
+    let payload: any;
+
+    console.log('cookies:', req.cookies);
+
+    const refreshToken = req.cookies?.['refresh_token'];
+    
+    if (!refreshToken) 
+      throw new UnauthorizedException('No hay refresh token');
+
+    try {
+
+       payload = this.jwtTokenService.verifyRefreshToken(refreshToken);
+    
+    } catch (error) {
+      throw new UnauthorizedException('Refresh token inválido o expirado');
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: payload.sub },
+      select: ['id', 'refresh_token']
+    });
+
+    if (!user || !user.refresh_token) {
+      throw new UnauthorizedException('Usuario no válido o sin token de refresco');
+    }
+
+    const isMatch = await bcrypt.compare(refreshToken, user.refresh_token);
+    if (!isMatch) {
+      throw new UnauthorizedException('Refresh token no coincide');
+    }
+
+    // Usar JwtTokenService para generar nuevos tokens
+    const [newAccessToken, newRefreshToken] = await Promise.all([
+      this.jwtTokenService.signAccessToken({ sub: user.id }),
+      this.jwtTokenService.signRefreshToken({ sub: user.id }),
+    ]);
+
+    const hashedNewRefreshToken = await bcrypt.hash(newRefreshToken, 10);
+    await this.userRepository.update(
+      { id: user.id },
+      { refresh_token: hashedNewRefreshToken }
+    );
+
+     // Actualizar cookie
+    this.jwtTokenService.setRefreshTokenCookie(res, newRefreshToken);
+
+    return {
+      access_token: newAccessToken,
+      refresh_token: newRefreshToken
+    };
+  }
+
 
   private handleDBErrors(error: any): never{
     if(error.code === '23505')

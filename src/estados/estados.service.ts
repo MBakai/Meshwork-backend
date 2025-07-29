@@ -14,7 +14,7 @@ export class EstadosService {
 
 
   async onApplicationBootstrap(){
-    const estadoPorDefecto = ['creado', 'Pendiente', 'En-proceso', 'Terminado'];
+    const estadoPorDefecto = ['Creado', 'Empezado', 'En-proceso', 'Terminado'];
 
     for( const nombre of estadoPorDefecto ){
       const estadoExiste = await this.estadoRepository.findOneBy( { nombre } )
@@ -23,6 +23,14 @@ export class EstadosService {
         await this.estadoRepository.save( nuevo );
       }
     }
+  }
+
+  async getAllEstado(){
+    return this.estadoRepository.find({
+      order: {
+        id: 'ASC' 
+      }
+    });
   }
 
 }

@@ -1,9 +1,8 @@
-import { IsEmail, IsNotEmpty } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsUUID } from 'class-validator';
 
 export class CreateColaboradorDto {
   
-  @IsEmail()
-  @IsNotEmpty()
-  destinatarioEmail: string;
+  @IsUUID()
+  destinatarioId: string;
 
 }

@@ -2,6 +2,8 @@ import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, Ma
 import { Estados } from '../../estados/entities/estados.entity';
 import { User } from "src/auth/entities/user.entity";
 import { Subtask } from "src/sub-task/entities/sub-task.entity";
+import { TaskType } from "./tipoTask.enum";
+import { IsEnum } from "class-validator";
 
 @Entity()
 export class Task { 
@@ -14,6 +16,13 @@ export class Task {
 
     @Column()
     descripcion: string;
+
+    @IsEnum(TaskType)
+    @Column({ 
+        type: 'enum', 
+        enum: TaskType,
+        default: TaskType.SIMPLE, })
+    type: TaskType;
 
     @ManyToOne( 
         () => Estados,
@@ -28,16 +37,25 @@ export class Task {
 
     @OneToMany(
         () => Subtask,
-         subtask => subtask.task)
+         subtask => subtask.task,{
+        cascade: ['remove'],    // Permite que al eliminar la Task, se eliminen las SubTasks
+        onDelete: 'CASCADE'
+    })
     subtasks: Subtask[];
 
-    @CreateDateColumn()
+    @CreateDateColumn({ type: 'timestamp without time zone' })
     createdAt: Date;
 
-    @UpdateDateColumn()
+    @UpdateDateColumn({ type: 'timestamp without time zone' })
     updatedAt: Date;
 
-    @Column({ nullable: true })
+    @Column({type: 'date', nullable: true })
+    startDate: string;
+
+    @Column({type: 'date', nullable: true })
+    endDate: string;
+
+    @Column({ type: 'timestamp without time zone', nullable: true })
     completedAt: Date;
 
 }

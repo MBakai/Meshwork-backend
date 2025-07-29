@@ -39,7 +39,7 @@ export class UserRoleGuard implements CanActivate {
       throw new BadRequestException('Usuario no encontrado');
     }
 
-    // obtiene el noombre del rol de usuario
+    // obtiene el nombre del rol de usuario
     const userRoleName = userWithRoles.role.rolNombre;
 
     const hasRequiredRole = requiredRoles.includes(userRoleName);

@@ -1,6 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateSubTaskDto } from './create-sub-task.dto';
-import { IsArray, IsDate, IsInt, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsArray, IsDate, IsDateString, IsInt, IsOptional, IsString, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateSubTaskDto extends PartialType(CreateSubTaskDto) {
@@ -14,15 +14,19 @@ export class UpdateSubTaskDto extends PartialType(CreateSubTaskDto) {
     descripcion?: string;
   
     @IsOptional()
-    id_estado?: number; // si estás actualizando el estado por su id
+    id_estado?: number; 
   
     @IsOptional()
     @IsArray()
     @IsUUID("all", { each: true })
     asignados?: string[]; // lista de IDs de usuarios asignados
-  
+
     @IsOptional()
-    @Type(() => Date)
-    @IsDate()
+    @IsArray()
+    @IsUUID("all", { each: true })
+    quitarAsignados?: string[];
+  
+    @IsDateString()
+    @IsOptional()
     completedAt?: Date;
 }

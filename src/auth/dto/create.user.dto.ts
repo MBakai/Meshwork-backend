@@ -18,17 +18,13 @@ export class CreateUserDto{
         minUppercase: 1,
         minNumbers: 1,
         minSymbols: 0,
+      }, {
+        message: 'La contraseña debe tener al menos 6 caracteres, una mayúscula, una minúscula y un número.'
       })
     password: string;
 
     
-    @IsStrongPassword({
-      minLength: 6,
-      minLowercase: 1,
-      minUppercase: 1,
-      minNumbers: 1,
-      minSymbols: 0,
-    })
+    @IsString()
     confirmPassword: string;
 
     @IsInt()

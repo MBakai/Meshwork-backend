@@ -8,6 +8,13 @@ import { TasksModule } from './tasks/tasks.module';
 import { RolesModule } from './roles/roles.module';
 import { ColaboradoresModule } from './colaboradores/colaboradores.module';
 import { SubTaskModule } from './sub-task/sub-task.module';
+import { NodemailerModule } from './services/nodemailer/nodemailer.module';
+import { TemplateModule } from './services/template/template.module';
+import { SendEmailModule } from './send-email/send-email.module';
+import { CleanUpModule } from './services/clean-up/clean-up.module';
+import { CleanupService } from './services/clean-up/cleanup.service';
+import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { NotificationsGateway } from './notificaciones/notifications.gateway';
 
 @Module({
   imports: [
@@ -32,11 +39,16 @@ import { SubTaskModule } from './sub-task/sub-task.module';
     TasksModule,
     RolesModule,
     ColaboradoresModule,
-    SubTaskModule
+    SubTaskModule,
+    NodemailerModule,
+    TemplateModule,
+    SendEmailModule,
+    CleanUpModule,
+    NotificacionesModule
     
   ],
   controllers: [],
-  providers: [],
+  providers: [CleanupService, NotificationsGateway],
 })
 
 export class AppModule {

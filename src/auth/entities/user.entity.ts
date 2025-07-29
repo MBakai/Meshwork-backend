@@ -5,9 +5,11 @@ import { Genero } from 'src/genero/entities/genero.entitys';
 import { Roles } from 'src/roles/entities/roles.entity';
 import { Colaborador } from 'src/colaboradores/entities/colaborador.entity';
 import { Subtask } from 'src/sub-task/entities/sub-task.entity';
+import { SendEmail } from 'src/send-email/entities/send-email.entity';
+import { Exclude } from 'class-transformer';
+import { Notificacione } from 'src/notificaciones/entities/notificacione.entity';
 
 @Entity('user')
-@Unique(['email'])
 export class User {
     
   @PrimaryGeneratedColumn('uuid')
@@ -25,9 +27,14 @@ export class User {
   password: string;
 
   @Column('bool',{
-    default: true
+    default: false
   })
+  @Exclude()
   activo: boolean;
+
+  @Column({ nullable: true, select: false })
+  @Exclude()
+  refresh_token?: string; 
 
   @ManyToOne(
     () => Genero,
@@ -65,7 +72,11 @@ export class User {
      (amistad) => amistad.destinatario)
   receivedCollabRequests: Colaborador[];
 
+  @OneToMany(() => Notificacione, noti => noti.usuario)
+  notificaciones: Notificacione[];
 
+  @OneToMany(() => SendEmail, verification => verification.user)
+  verifications: SendEmail[];
 
   @BeforeInsert()
   CheckFieldBeforeInsert(){

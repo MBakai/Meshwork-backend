@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Patch, Param, Delete, ParseUUIDPipe } from '@nestjs/common';
 import { SubTaskService } from './sub-task.service';
 import { CreateSubTaskDto } from './dto/create-sub-task.dto';
 import { UpdateSubTaskDto } from './dto/update-sub-task.dto';
@@ -10,10 +10,9 @@ import { User } from 'src/auth/entities/user.entity';
 export class SubTaskController {
   constructor(private readonly subTaskService: SubTaskService) {}
 
-  @Post('create')
-  @Auth('usuario')
+  @Post('create/:taskId')
+  @Auth('admin','usuario')
   create(
-    @GetUser() user: User,
     @Param('taskId') taskId: string, 
     @Body() createSubTaskDto: CreateSubTaskDto) {
     return this.subTaskService.createSubTask(createSubTaskDto, taskId);
@@ -21,13 +20,16 @@ export class SubTaskController {
 
 
   @Patch('update/:id')
-  @Auth('usuario')
+  @Auth('admin','usuario')
   update(@Param('id') id: string, @Body() updateSubTaskDto: UpdateSubTaskDto) {
     return this.subTaskService.update(id, updateSubTaskDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.subTaskService.remove(+id);
+  @Delete('remove/:id')
+  @Auth('admin','usuario')
+  removeTask(
+    @GetUser() user:User,
+    @Param( 'id', ParseUUIDPipe) id: string){
+    return this.subTaskService.deleteTask(id, user );
   }
 }

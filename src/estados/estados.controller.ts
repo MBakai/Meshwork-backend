@@ -6,5 +6,9 @@ export class EstadosController {
 
   constructor(private readonly estadosService: EstadosService) {}
 
+  @Get()
+  obtenerEstado(){
+    return this.estadosService.getAllEstado();
+  }
   
 }

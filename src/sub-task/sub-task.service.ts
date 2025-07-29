@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateSubTaskDto } from './dto/create-sub-task.dto';
 import { UpdateSubTaskDto } from './dto/update-sub-task.dto';
 import { User } from 'src/auth/entities/user.entity';
@@ -7,6 +7,7 @@ import { Estados } from 'src/estados/entities/estados.entity';
 import { In, Repository } from 'typeorm';
 import { Subtask } from './entities/sub-task.entity';
 import { Task } from 'src/tasks/entities/task.entity';
+import { cleanObject } from 'src/utils/cleanUpDto';
 
 @Injectable()
 export class SubTaskService {
@@ -24,21 +25,29 @@ export class SubTaskService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>
-  ){
+  ){}
 
-  }
+  readonly MAX_SUBTASKS = 5;
 
   async createSubTask(createSubTaskDto: CreateSubTaskDto, taskId: string) {
 
-    const task = await this.taskRepository.findOne({where: {id: taskId } })
+    const idTask = await this.taskRepository.findOne({
+      where: {id: taskId },
+      relations: ['subtasks'] }) 
 
-    if(!task)
-      throw new NotFoundException('Task no encontrado o creado aún!!')
+    if(!idTask)
+      throw new NotFoundException('Task no encontrado o creado aún!!');
 
-    const {titulo, descripcion} =  createSubTaskDto;
+    const currentCount = idTask.subtasks.length;
+
+    if (currentCount >= this.MAX_SUBTASKS) {
+      throw new BadRequestException(`Solo se permiten ${this.MAX_SUBTASKS} subtareas por tarea`);
+    }
+    
+    const {titulo, descripcion, startDate, endDate, createdAt} =  createSubTaskDto;
 
     const estadoInicial = await this.estadosRepository.findOne({
-      where: {nombre: 'creado'}
+      where: {nombre: 'Creado'}
     });
 
     if(!estadoInicial)
@@ -50,9 +59,12 @@ export class SubTaskService {
     const nuevoSubTask =  await this.subTaskRepository.create({
       titulo,
       descripcion,
-      task,
+      task: idTask,
       estados: estadoInicial,
-      asignados
+      asignados,
+      startDate,
+      endDate,
+      createdAt: createdAt ? new Date(createdAt) : new Date(),
     })
 
     const subTaskNuevo = await this.subTaskRepository.save( nuevoSubTask );
@@ -71,13 +83,22 @@ export class SubTaskService {
     if (!subtask) {
       throw new NotFoundException(`Subtarea con id ${id} no encontrada`);
     }
-  
+    console.log(updateSubTaskDto.asignados);
+    
+    const isCompleted = updateSubTaskDto.id_estado === 4;
+    
     // Actualizar campos simples
-    if (updateSubTaskDto.titulo !== undefined) subtask.titulo = updateSubTaskDto.titulo;
-    if (updateSubTaskDto.descripcion !== undefined) subtask.descripcion = updateSubTaskDto.descripcion;
-    if (updateSubTaskDto.completedAt !== undefined) subtask.completedAt = updateSubTaskDto.completedAt;
-  
-    // Actualizar estado (relación)
+    Object.assign(subtask, cleanObject({
+      titulo: updateSubTaskDto.titulo,
+      descripcion: updateSubTaskDto.descripcion,
+      startDate: updateSubTaskDto.startDate ?? null,
+      endDate: updateSubTaskDto.endDate ?? null,
+    }));
+    
+    if (isCompleted && !subtask.completedAt) {
+      subtask.completedAt = new Date();
+    }
+
     if (updateSubTaskDto.id_estado) {
       const estado = await this.estadosRepository.findOneBy({ id: updateSubTaskDto.id_estado });
       if (!estado) {
@@ -86,45 +107,49 @@ export class SubTaskService {
       subtask.estados = estado;
     }
   
-    // // Actualizar tarea padre (relación)
-    // if (updateSubTaskDto.taskId) {
-    //   const task = await this.taskRepository.findOneBy({ id: updateSubTaskDto.taskId });
-    //   if (!task) {
-    //     throw new NotFoundException(`Tarea con id ${updateSubTaskDto.taskId} no encontrada`);
-    //   }
-    //   subtask.task = task;
-    // }
-  
-    // Actualizar asignados (relación muchos a muchos)
+    // Actualizar asignados 
     if (updateSubTaskDto.asignados) {
       subtask.asignados = await this.validarYObtenerUsers(updateSubTaskDto.asignados);
     }
-  
-    return this.subTaskRepository.save(subtask);
-  }
 
-
+    if (updateSubTaskDto.quitarAsignados?.length) {
+        subtask.asignados = subtask.asignados.filter(u => !updateSubTaskDto.quitarAsignados?.includes(u.id));
+      }
   
-  remove(id: number) {
-    return `This action removes a #${id} subTask`;
+    return await this.subTaskRepository.save(subtask);
   }
 
   private async validarYObtenerUsers( userIds?: string[] ): Promise<User[]> {
-
+    
     if (!userIds || userIds.length === 0) return [];
-
+    
     const users = await this.userRepository.findBy({ 
       id: In([...userIds]) // Spread operator para conversión segura
     });
-
+    
     if (users.length !== userIds.length) {
-
+      
       const idDesaparecido = userIds.filter(id => !users.some(u => u.id === id));
 
       throw new NotFoundException(`Usuarios no encontrados: ${idDesaparecido.join(', ')}`);
     }
-
+    
     return users;
   }
+
+  async deleteTask(subTaskId: string, user: User): Promise<{ message: string }> {
   
+    const subtask = await this.subTaskRepository.findOne({
+      where: { id: subTaskId },
+      relations: ['task', 'task.creador']
+    });
+  
+    if (!subtask || subtask.task.creador.id !== user.id) {
+      throw new NotFoundException('Subtarea no encontrada o no tienes permiso para eliminarla');
+    }
+  
+    await this.subTaskRepository.remove(subtask);
+  
+    return { message: 'Tarea eliminada con éxito' };
+  }
 }
