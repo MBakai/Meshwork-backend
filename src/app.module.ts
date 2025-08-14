@@ -22,15 +22,13 @@ import { NotificationsGateway } from './notificaciones/notifications.gateway';
       isGlobal: true
     }),
     TypeOrmModule.forRoot({
-      
       type: 'postgres',
-      port: +process.env.DB_PORT!,
-      host: process.env.DB_HOST,
-      database: process.env.DB_NAME,
-      password: process.env.DB_PASSWORD,
-      username: process.env.DB_USERNAME,
+      url: process.env.DATABASE_URL, // Render proporciona esta URL automáticamente
       autoLoadEntities: true,
-      synchronize: false // Solo para desarrollo
+      synchronize: false, // ❌ Desactivado en producción
+      ssl: { rejectUnauthorized: false }, // Requerido para Render PostgreSQL
+      migrations: [__dirname + '/migrations/*{.ts,.js}'],
+      migrationsRun: true, // Ejecuta migraciones al iniciar (opcional)
     }),
 
     AuthModule,
