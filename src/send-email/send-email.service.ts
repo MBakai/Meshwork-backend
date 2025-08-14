@@ -15,8 +15,6 @@ export class SendEmailService {
     private readonly usuarioRepository: Repository<User>,
     @InjectRepository(SendEmail) 
       private readonly userVerificationRepository: Repository<SendEmail>,
-
-      private readonly emailService: NodemailerService
   ) {}
 
   // **************************************************************************
@@ -57,30 +55,6 @@ export class SendEmailService {
     return { message: 'Cuenta verificada exitosamente' };
   }
 
-    // Tarea programada para eliminar usuarios no verificados después de 24 horas
-  async cleanupUnverifiedUsers(): Promise<void> {
-    // Buscar tokens de verificación expirados y no usados (tipo EMAIL)
-    const expiredVerifications = await this.userVerificationRepository.find({
-      where: {
-        type: 'EMAIL',
-        used: false,
-        expiresAt: LessThan(new Date()),
-      },
-      relations: ['user'],
-    });
-
-    if (expiredVerifications.length === 0) return;
-
-    // Extraer los usuarios asociados a estos tokens expirados
-    const usersToRemove = expiredVerifications.map(v => v.user);
-
-    // Eliminar tokens y usuarios
-    await this.userVerificationRepository.remove(expiredVerifications);
-    await this.usuarioRepository.remove(usersToRemove);
-
-    console.log(`Eliminados ${usersToRemove.length} usuarios no verificados`);
-  }
-
   async verifyEmailPassword(token: string): Promise<{ message: string }> {
 
     const userVerification  = await this.userVerificationRepository.findOne({
@@ -112,4 +86,44 @@ export class SendEmailService {
 
   }
 
+  // Tarea programada para eliminar usuarios no verificados después de 24 horas
+  async cleanupUnverifiedUsers(): Promise<void> {
+    // Buscar tokens de verificación expirados y no usados (tipo EMAIL)
+    const expiredVerifications = await this.userVerificationRepository.find({
+      where: {
+        type: 'EMAIL',
+        used: false,
+        expiresAt: LessThan(new Date()),
+      },
+      relations: ['user'],
+    });
+
+    if (expiredVerifications.length === 0) return;
+
+    // Extraer los usuarios asociados a estos tokens expirados
+    const usersToRemove = expiredVerifications.map(v => v.user);
+
+    // Eliminar tokens y usuarios
+    await this.userVerificationRepository.remove(expiredVerifications);
+    await this.usuarioRepository.remove(usersToRemove);
+
+    console.log(`Eliminados ${usersToRemove.length} usuarios no verificados`);
+  }
+
+   async cleanupUnverifiedPasswordResets(): Promise<void> {
+    const expiredResets = await this.userVerificationRepository.find({
+      where: {
+        type: 'PASSWORD_RESET',
+        used: false,
+        expiresAt: LessThan(new Date()),
+      }
+    });
+
+    if (!expiredResets.length) return;
+
+    // Aquí NO borras usuarios
+    await this.userVerificationRepository.remove(expiredResets);
+
+    console.log(`Eliminadas ${expiredResets.length} solicitudes de recuperación expiradas`);
+  }
 }

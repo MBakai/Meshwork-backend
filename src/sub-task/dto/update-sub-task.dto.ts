@@ -5,14 +5,7 @@ import { Type } from 'class-transformer';
 
 export class UpdateSubTaskDto extends PartialType(CreateSubTaskDto) {
 
-    @IsOptional()
-    @IsString()
-    titulo?: string;
-  
-    @IsOptional()
-    @IsString()
-    descripcion?: string;
-  
+    
     @IsOptional()
     id_estado?: number; 
   

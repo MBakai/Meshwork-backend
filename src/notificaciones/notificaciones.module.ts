@@ -5,14 +5,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Notificacione } from './entities/notificacione.entity';
 import { NotificationsGateway } from 'src/notificaciones/notifications.gateway';
 import { User } from 'src/auth/entities/user.entity';
+import { Subtask } from 'src/sub-task/entities/sub-task.entity';
 
 @Module({
   imports: [
-      TypeOrmModule.forFeature([Notificacione, User]),
+      TypeOrmModule.forFeature([Notificacione, User, Subtask]),
       NotificationsGateway
     ],
   controllers: [NotificacionesController],
   providers: [NotificacionesService, NotificationsGateway],
-  exports:[NotificacionesService]
+  exports:[NotificacionesService, TypeOrmModule]
 })
 export class NotificacionesModule {}

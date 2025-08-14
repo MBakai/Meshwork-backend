@@ -7,6 +7,8 @@ import { LoginUserDto } from './dto/login.user.dto';
 import { Auth } from './decorators/auth.decorator';
 import { JwtTokenService } from './jwt-token-service/jwt-token.service';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { GetUser } from './decorators/get-user.decorator';
+import { User } from './entities/user.entity';
 
 @Controller('user')
 export class AuthController {
@@ -47,10 +49,13 @@ export class AuthController {
     return { message: 'Sesión cerrada' };
   }
 
-  @Patch('update/:uuid')
-  update(@Param('id') uuid: string, @Body() updateAuthDto: UpdateAuthDto) {
-    return this.authService.update(uuid, updateAuthDto);
-  }
+  @Patch('edit-user/:id')
+    @Auth('admin','usuario')
+    userUpdate(
+      @GetUser() user: User,
+      @Body() updateAuthkDto: UpdateAuthDto) {
+        return this.authService.updateUser(user.id, updateAuthkDto);
+    }
 
   @Delete(':id')
   remove(@Param('id') id: string) {

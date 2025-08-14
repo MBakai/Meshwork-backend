@@ -56,6 +56,6 @@ export class Task {
     endDate: string;
 
     @Column({ type: 'timestamp without time zone', nullable: true })
-    completedAt: Date;
+    completedAt: Date | null;
 
 }

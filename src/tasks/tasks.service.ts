@@ -11,6 +11,7 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { Subtask } from 'src/sub-task/entities/sub-task.entity';
 import { ColaboradoresService } from 'src/colaboradores/colaboradores.service';
 import { ListaTaskFullDto } from './dto/listarTaskFull.dto';
+
 @Injectable()
 export class TasksService {
 
@@ -29,10 +30,7 @@ export class TasksService {
     private readonly estadoRepository: Repository<Estados>,
 
     private colaboradorService: ColaboradoresService,
-  ){
-
-  }
-
+  ){}
 
   // ════════════════════════════════════════════════
   // 🧪 FUNC: Crea una tarea solo cuando el usuario tenga un token valido
@@ -78,7 +76,6 @@ export class TasksService {
       task: savedTask,
     };
   }
-
 
    async listarTask(user: User){
 
@@ -158,7 +155,6 @@ export class TasksService {
           endDate: true
 
         }
-         // de esta manera puedo traer la informacion de user con sub-task
       });
 
         return listaTask;
@@ -170,6 +166,71 @@ export class TasksService {
   
       throw new BadRequestException('Error al listar tareas: ' + error.message);
     } 
+  }
+
+  async verificarCloaborador(subtaskId: string, userId: string){
+
+    const subtask = await this.subTaskRepository.findOne({
+      where: {
+        id: subtaskId,
+        asignados: {
+          id: userId,
+        },
+      },
+      relations: ['asignados', 'task'],
+    });
+
+    if (!subtask) {
+      throw new Error('No autorizado o la subtarea no existe');
+    }
+    return subtask;
+  }
+
+  async listarTaskColaborador(subtaskId: string, userId: string) {
+    // Paso 1: verificar que el usuario está asignado a la subtask
+     const subtask = await this.verificarCloaborador(subtaskId, userId);
+    // Paso 2: traer la tarea con todas las subtareas y sus asignados
+    try{
+
+      const task = await this.taskRepository.findOne({
+        where: { id: (await subtask).task.id },
+        relations: [
+          'subtasks',
+          'subtasks.estados',
+          'subtasks.asignados',
+        ]
+      });
+  
+      return {
+        id: task!.id,
+        titulo: task!.titulo,
+        descripcion: task!.descripcion,
+        subtasks: task!.subtasks.map(st => ({
+          id: st.id,
+          titulo: st.titulo,
+          descripcion: st.descripcion,
+          estados: {
+            id: st.estados.id,
+            nombre: st.estados.nombre,
+          },
+          startDate: st.startDate,
+          endDate: st.endDate,
+          asignados: st.asignados.map(a => ({
+            nombre: a.nombre,
+            // role lo excluyes simplemente no poniéndolo
+          })),
+          createdAt: st.createdAt,
+          updatedAt: st.updatedAt,
+          completedAt: st.completedAt,
+        })),
+      };
+
+    }catch (error) {
+      if (error instanceof HttpException) {
+        throw error; 
+      }
+      throw new BadRequestException('Error al listar tareas: ' + error.message);
+    }
   }
 
   async listarPorId(taskId: string, user:User){
@@ -217,15 +278,14 @@ export class TasksService {
     };
   }
 
- async updateTask(id: string, dto: UpdateTaskDto, user: User) {
-
+  async updateTask(id: string, dto: UpdateTaskDto, user: User) {
     const task = await this.taskRepository.findOne({
-
-      where: { id, creador: { id: user.id } },
-      relations: ['subtasks'],
+      where: { id, creador: { id: user.id } }
     });
 
     if (!task) throw new NotFoundException('Tarea no encontrada');
+
+    const tipoAnterior = task.type; // Guardamos el tipo actual antes de modificarlo
 
     // Actualizar campos si están presentes
     Object.assign(task, {
@@ -236,13 +296,22 @@ export class TasksService {
       ...(dto.endDate !== undefined && { endDate: dto.endDate }),
     });
 
-    const updateTask =  await this.taskRepository.save(task);
+    // Solo si pasa de SIMPLE → COMPOSITE, reseteamos el estado
+    if (tipoAnterior === TaskType.SIMPLE && task.type === TaskType.COMPOSITE) {
+      const estadoCreado = await this.estadoRepository.findOne({ where: { id: 1 } }); // ID del estado "creado"
+      if (!estadoCreado) throw new NotFoundException('Estado "creado" no encontrado');
+      task.estados = estadoCreado;
+      task.completedAt = null; // Limpiar si estaba marcada como completada
+    }
 
-    return { 
-      message: "Tarea atualizada correctamente",
-      task: updateTask
-     }
+    const updatedTask = await this.taskRepository.save(task);
+
+    return {
+      message: "Tarea actualizada correctamente",
+      task: updatedTask
+    };
   }
+
 
   async actualizarEstado(taskId: string, estadoId: number) {
 
@@ -281,24 +350,4 @@ export class TasksService {
   }
 }
 
-
-
-  // async findAll(paginationDto: PaginationDto) {
-
-  //   const {limit= 10, offset = 0} = paginationDto; 
-
-  //   const product = await this.productRepository.find({
-  //     take:limit,
-  //     skip: offset,
-  //     relations: {
-  //       images: true
-  //     }
-
-  //   });
-
-  //   return product.map( ( product ) => ({
-  //     ...product,
-  //     imaages: product.images?.map( img => img.url )
-  //   }));
-  // }
 

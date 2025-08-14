@@ -4,11 +4,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, Not, Repository } from 'typeorm';
 import { User } from 'src/auth/entities/user.entity';
 import { ColaboradorDto } from './dto/colaborador.dto';
-import { ColaboradorResponseDto } from './dto/colaborador-response.dto';
 import { SolicitudDTO } from './dto/solicitudes.dto';
 import { NotificacionesService } from 'src/notificaciones/notificaciones.service';
 import { TypeNotification } from 'src/notificaciones/entities/type-notification.enum';
-import { promises } from 'dns';
 
 @Injectable()
 export class ColaboradoresService {

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { CreateUserDto } from './dto/create.user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -18,6 +18,7 @@ import { JwtTokenService } from './jwt-token-service/jwt-token.service';
 import { JwtPayload } from './interface/jwt.payload.interface';
 import { Response, Request } from 'express';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { error } from 'console';
 
 @Injectable()
 export class AuthService {
@@ -47,58 +48,74 @@ export class AuthService {
   // 🧪 FUNC: crear usuario administrador con jwt
   // ════════════════════════════════════════════════
   async createUser(createUserDto: CreateUserDto) {
+    const { password, confirmPassword, email, nombre, id_genero } = createUserDto;
 
-      
-      const { password, confirmPassword, email, nombre } = createUserDto;
-      //desestructuracion de argumentos, separa id_genero del resto de argumentos
-  
-      const genero = await this.generoRepository.findOneBy({id: createUserDto.id_genero});
-
-      const verRole = await this.rolesRepository.findOneBy({ rolNombre: 'usuario' });
-
-      if(password !== confirmPassword)
-        throw new BadRequestException('Las contraseñas no coinciden!!')
-      
-      if(!genero)
-        throw new NotFoundException('Genero no encontrado!!');
-
-      if (!verRole) {
-        throw new NotFoundException('¡Rol no encontrado!');
-      }
-  
-      const nuevoUsuario = this.userRepository.create({
-        nombre,
-        email,
-        password: bcrypt.hashSync(password, 10),
-        genero, 
-        role: verRole
+    // Validar duplicado de email
+    const existingUser = await this.userRepository.findOneBy({ email });
+    if (existingUser) {
+      throw new ConflictException({
+        code: ErrorCodes.EMAIL_ALREADY_REGISTERED,
+        message: 'El correo ya está registrado',
       });
+    }
 
-      await this.userRepository.save(nuevoUsuario);
+    // Validar contraseñas
+    if (password !== confirmPassword) {
+      throw new BadRequestException({
+        code: ErrorCodes.PASSWOR_NOT_MATCH,
+        message: 'Las contraseñas no coinciden'
+      });
+    }
 
-      const verificationToken = uuidv4();
-      const verificationTokenExpires = new Date();
-      verificationTokenExpires.setHours(verificationTokenExpires.getHours() + 24); // 24 horas
+    // Validar género
+    const genero = await this.generoRepository.findOneBy({ id: id_genero });
+    if (!genero) {
+      throw new NotFoundException({
+        code: ErrorCodes.RESOURCE_NOT_FOUND_GENDER,
+        message: 'Género no encontrado'
+      });
+    }
 
-      
-      const userVerification = this.sendEmailRepository.create({
+    // Validar rol
+    const verRole = await this.rolesRepository.findOneBy({ rolNombre: 'usuario' });
+    if (!verRole) {
+      throw new NotFoundException({
+        code: ErrorCodes.RESOURCE_NOT_FOUND_ROL,
+        message: 'Rol no encontrado'
+      });
+    }
+
+    // Crear usuario
+    const nuevoUsuario = this.userRepository.create({
+      nombre,
+      email,
+      password: bcrypt.hashSync(password, 10),
+      genero,
+      role: verRole,
+    });
+    await this.userRepository.save(nuevoUsuario);
+
+    // Crear token de verificación
+    const verificationToken = uuidv4();
+    const verificationTokenExpires = new Date();
+    verificationTokenExpires.setHours(verificationTokenExpires.getHours() + 24);
+
+    const userVerification = this.sendEmailRepository.create({
       token: verificationToken,
       expiresAt: verificationTokenExpires,
       used: false,
       type: 'EMAIL',
       user: nuevoUsuario,
     });
-
     await this.sendEmailRepository.save(userVerification);
 
     // Enviar email de verificación
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-account?token=${verificationToken}`;
-
     await this.nodemailerService.sendVerificationEmail(email, nombre, verificationUrl);
 
     return { message: 'Usuario registrado. Por favor verifica tu email.' };
-
   }
+
 
   // ════════════════════════════════════════════════
   // 🧪 FUNC: recuperacion de contraseña
@@ -268,8 +285,18 @@ export class AuthService {
     };
   }
 
-  update(uuid: string, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${uuid} auth`;
+  async updateUser(userId: string, updateAuthDto: UpdateAuthDto) {
+    
+     const user = await this.findById(userId);
+
+      Object.assign(user, {
+      ...(updateAuthDto.nombre !== undefined && { nombre: updateAuthDto.nombre }),
+    });
+
+    const updatedTask = await this.userRepository.save(user);
+
+    const { id, nombre, email } = updatedTask;
+    return { id, nombre, email };
   }
 
   remove(id: number) {

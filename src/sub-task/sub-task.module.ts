@@ -6,10 +6,12 @@ import { Subtask } from './entities/sub-task.entity';
 import { Task } from 'src/tasks/entities/task.entity';
 import { Estados } from 'src/estados/entities/estados.entity';
 import { User } from 'src/auth/entities/user.entity';
+import { NotificacionesModule } from 'src/notificaciones/notificaciones.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ Subtask, Task, Estados, User ])
+    TypeOrmModule.forFeature([ Subtask, Task, Estados, User ]),
+    NotificacionesModule
   ],
   controllers: [SubTaskController],
   providers: [SubTaskService],

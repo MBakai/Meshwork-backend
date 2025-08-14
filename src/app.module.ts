@@ -30,7 +30,7 @@ import { NotificationsGateway } from './notificaciones/notifications.gateway';
       password: process.env.DB_PASSWORD,
       username: process.env.DB_USERNAME,
       autoLoadEntities: true,
-      synchronize: true // Solo para desarrollo
+      synchronize: false // Solo para desarrollo
     }),
 
     AuthModule,

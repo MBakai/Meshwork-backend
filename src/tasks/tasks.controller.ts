@@ -40,11 +40,18 @@ export class TasksController {
   }
 
   @Get('get-full/:id')
-  @Auth('admin', 'usuario') // Igual que tus otros endpoints
+  @Auth('admin', 'usuario')
     async obtenerTareasConColaboradores(
       @GetUser() user: User,
       @Param('id', ParseUUIDPipe) taskId: string) {
     return this.tasksService.listarTaskConColaboradores(user, taskId);
+  }
+
+  @Get('get-task-colab/:id')
+  @Auth('admin', 'usuario')
+    async obtenerTaskColaborador(
+      @GetUser() user: User, @Param('id', ParseUUIDPipe) subtaskId: string) {
+    return this.tasksService.listarTaskColaborador(subtaskId, user.id);
   }
 
   @Patch('update-task/:id')
