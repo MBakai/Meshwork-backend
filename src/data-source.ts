@@ -10,7 +10,14 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
+  ssl: true, // Habilita SSL
+  extra: {
+    ssl: {
+      rejectUnauthorized: false, // Solo si usas un certificado auto-firmado (común en Render)
+    },
+  },
   entities: [__dirname + "/**/*.entity{.ts,.js}"],
   migrations: [__dirname + "/migrations/*{.ts,.js}"],
   synchronize: false,
 });
+
