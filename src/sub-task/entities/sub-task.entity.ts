@@ -1,8 +1,9 @@
 import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Column, ManyToMany, JoinTable, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Estados } from '../../estados/entities/estados.entity';
+import { Task } from '../../tasks/entities/task.entity';
+import { User } from '../../auth/entities/user.entity';
 
-import { User } from 'src/auth/entities/user.entity';
-import { Estados } from 'src/estados/entities/estados.entity';
-import { Task } from 'src/tasks/entities/task.entity';
+
 
 
 @Entity('subTask')

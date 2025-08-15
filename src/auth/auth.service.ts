@@ -8,7 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { JwtService } from '@nestjs/jwt';
 import { LoginUserDto } from './dto/login.user.dto';
-import { Genero } from 'src/genero/entities/genero.entitys';
+import { Genero } from 'src/genero/entities/genero.entity';
 import { Roles } from 'src/roles/entities/roles.entity';
 import { Colaborador } from 'src/colaboradores/entities/colaborador.entity';
 import { NodemailerService } from 'src/services/nodemailer/nodemailer.service';

@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { TypeNotification } from "./type-notification.enum";
 import { IsEnum } from "class-validator";
-import { User } from "src/auth/entities/user.entity";
+import { User } from '../../auth/entities/user.entity';
 
 @Entity()
 export class Notificacione {

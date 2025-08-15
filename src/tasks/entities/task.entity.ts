@@ -1,9 +1,9 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { Estados } from '../../estados/entities/estados.entity';
-import { User } from "src/auth/entities/user.entity";
-import { Subtask } from "src/sub-task/entities/sub-task.entity";
-import { TaskType } from "./tipoTask.enum";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { IsEnum } from "class-validator";
+import { TaskType } from "./tipoTask.enum";
+import { Estados } from '../../estados/entities/estados.entity';
+import { User } from '../../auth/entities/user.entity';
+import { Subtask } from '../../sub-task/entities/sub-task.entity';
 
 @Entity()
 export class Task { 

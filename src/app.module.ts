@@ -34,6 +34,7 @@ import { NotificationsGateway } from './notificaciones/notifications.gateway';
       ssl: { rejectUnauthorized: false }, // Requerido para Render PostgreSQL
       migrations: [__dirname + '/migrations/*{.ts,.js}'],
       migrationsRun: true, // Ejecuta migraciones al iniciar (opcional)
+
     }),
 
     AuthModule,

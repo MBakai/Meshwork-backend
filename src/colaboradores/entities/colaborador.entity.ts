@@ -1,5 +1,6 @@
-import { User } from "src/auth/entities/user.entity";
+
 import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { User } from '../../auth/entities/user.entity';
 
 @Entity()
 export class Colaborador {

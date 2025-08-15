@@ -1,13 +1,14 @@
 import { Entity, PrimaryGeneratedColumn, Column, Unique, ManyToOne, JoinColumn, BeforeInsert, BeforeUpdate, OneToMany, ManyToMany, JoinTable } from 'typeorm';
-
-import { Task } from 'src/tasks/entities/task.entity';
-import { Genero } from 'src/genero/entities/genero.entitys';
-import { Roles } from 'src/roles/entities/roles.entity';
-import { Colaborador } from 'src/colaboradores/entities/colaborador.entity';
-import { Subtask } from 'src/sub-task/entities/sub-task.entity';
-import { SendEmail } from 'src/send-email/entities/send-email.entity';
 import { Exclude } from 'class-transformer';
-import { Notificacione } from 'src/notificaciones/entities/notificacione.entity';
+import { Genero } from '../../genero/entities/genero.entity';
+import { Roles } from '../../roles/entities/roles.entity';
+import { Task } from '../../tasks/entities/task.entity';
+import { Subtask } from '../../sub-task/entities/sub-task.entity';
+import { Colaborador } from '../../colaboradores/entities/colaborador.entity';
+import { Notificacione } from '../../notificaciones/entities/notificacione.entity';
+import { SendEmail } from '../../send-email/entities/send-email.entity';
+
+
 
 @Entity('user')
 export class User {
