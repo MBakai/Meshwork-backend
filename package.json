@@ -6,8 +6,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "yarn nest build",
-    "start": "yarn nest start",
+    "build": "nest build",
+    "start": "nest start",
     "start:dev": "yarn nest start --watch",
     "start:debug": "yarn nest start --debug --watch",
     "start:prod": "node dist/main.js",
