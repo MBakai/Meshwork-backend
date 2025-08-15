@@ -15,6 +15,7 @@ import { CleanUpModule } from './services/clean-up/clean-up.module';
 import { CleanupService } from './services/clean-up/cleanup.service';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { NotificationsGateway } from './notificaciones/notifications.gateway';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -30,10 +31,10 @@ import { NotificationsGateway } from './notificaciones/notifications.gateway';
       username: process.env.DB_USERNAME,
       url: process.env.DATABASE_URL, // Render proporciona esta URL automáticamente
       autoLoadEntities: true,
-      synchronize: false, 
-      ssl: { rejectUnauthorized: false }, // Requerido para Render PostgreSQL
-      migrations: [__dirname + '/migrations/*{.ts,.js}'],
-      migrationsRun: true, // Ejecuta migraciones al iniciar (opcional)
+      synchronize: true, 
+      // ssl: { rejectUnauthorized: false }, // Requerido para Render PostgreSQL
+      // migrations: [__dirname + '/migrations/*{.ts,.js}'],
+      // migrationsRun: false, // Ejecuta migraciones al iniciar (opcional)
 
     }),
 
@@ -51,7 +52,7 @@ import { NotificationsGateway } from './notificaciones/notifications.gateway';
     NotificacionesModule
     
   ],
-  controllers: [],
+  controllers: [AppController],
   providers: [CleanupService, NotificationsGateway],
 })
 

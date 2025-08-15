@@ -2,7 +2,7 @@
   services:
     db:
       image: postgres:16.2-alpine  # Imagen más reciente y liviana
-      container_name: meshwork
+      container_name: aslowe
       restart: always
       ports:
         - "5432:5432"

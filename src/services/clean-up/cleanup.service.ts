@@ -10,7 +10,7 @@ export class CleanupService {
     ) {}
 
   // Ejecutar cada hora para limpiar usuarios no verificados
-  @Cron(CronExpression.EVERY_HOUR)
+  @Cron(CronExpression.EVERY_12_HOURS)
   async handleCleanupUnverifiedUsers() {
     console.log('Ejecutando limpieza de usuarios no verificados...');
     await this.verificacionesCorreoService.cleanupUnverifiedUsers();
