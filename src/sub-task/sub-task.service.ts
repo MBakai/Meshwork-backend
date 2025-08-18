@@ -8,8 +8,6 @@ import { In, Repository } from 'typeorm';
 import { Subtask } from './entities/sub-task.entity';
 import { Task } from 'src/tasks/entities/task.entity';
 import { NotificacionesService } from 'src/notificaciones/notificaciones.service';
-import { UpdateEstadoSubTaskDto } from './dto/update-estado.dto';
-import { TasksService } from 'src/tasks/tasks.service';
 
 @Injectable()
 export class SubTaskService {
@@ -102,6 +100,8 @@ export class SubTaskService {
   //ACTUALIZACION DE LA SUBTASK
 
   async update(id: string, updateSubTaskDto: UpdateSubTaskDto, user: User) {
+    console.log('data de la subtask:', updateSubTaskDto);
+    
     const subtask = await this.subTaskRepository.findOne({
       where: { id },
       relations: ['estados', 'task', 'asignados', 'task.creador'],
@@ -112,14 +112,15 @@ export class SubTaskService {
     }
 
     const esAsignado = subtask.asignados.some(asignado => asignado.id === user.id);
+
     const esCreadorTask = subtask.task.creador.id === user.id;
 
-    // 🔹 Si no es creador ni asignado → no tiene permiso
+    //Si no es creador ni asignado → no tiene permiso
     if (!esAsignado && !esCreadorTask) {
       throw new ForbiddenException(`No tienes permiso para modificar esta subtarea`);
     }
 
-    // 🔹 Si es asignado pero no creador → solo puede cambiar estado
+    //Si es asignado pero no creador → solo puede cambiar estado
     if (esAsignado && !esCreadorTask) {
       if (!updateSubTaskDto.id_estado) {
         throw new ForbiddenException(`Solo puedes cambiar el estado de la subtarea`);
@@ -128,7 +129,7 @@ export class SubTaskService {
       return await this.subTaskRepository.save(subtask);
     }
 
-    // 🔹 Si es creador → puede modificar todo
+    //Si es creador → puede modificar todo
     this.actualizarCamposSimples(subtask, updateSubTaskDto);
 
     if (updateSubTaskDto.id_estado) {
@@ -150,14 +151,17 @@ export class SubTaskService {
 
     const isCompleted = dto.id_estado === 4;
 
-    Object.assign(subtask, Object.fromEntries(
-      Object.entries({
-        titulo: dto.titulo,
-        descripcion: dto.descripcion,
-        startDate: dto.startDate ?? null,
-        endDate: dto.endDate ?? null
-      }).filter(([_, value]) => value !== undefined)
-    ));
+    Object.assign(
+      subtask,
+      Object.fromEntries(
+        Object.entries({
+          titulo: dto.titulo,
+          descripcion: dto.descripcion,
+          startDate: dto.startDate,
+          endDate: dto.endDate,
+        }).filter(([_, value]) => value !== undefined) // solo se actualiza si no es undefined
+      )
+    );
 
     if (isCompleted && !subtask.completedAt) {
       subtask.completedAt = new Date();
@@ -173,6 +177,10 @@ export class SubTaskService {
       throw new NotFoundException(`Estado con id ${id_estado} no encontrado`);
     }
     subtask.estados = estado;
+
+    if(subtask.estados.id === 4){
+      subtask.completedAt = new Date();
+    }
 
     // Si cambió el estado, enviar notificación
     if (estadoAnterior !== id_estado) {
