@@ -31,7 +31,7 @@ import { AppController } from './app.controller';
       username: process.env.DB_USERNAME,
       url: process.env.DATABASE_URL, // Render proporciona esta URL automáticamente
       autoLoadEntities: true,
-      synchronize: true, 
+      synchronize: false, 
       ssl: { rejectUnauthorized: false }, // Requerido para Render PostgreSQL
       migrations: [__dirname + '/migrations/*{.ts,.js}'],
       migrationsRun: false, // Ejecuta migraciones al iniciar (opcional)
